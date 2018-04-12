@@ -107,12 +107,14 @@ func (h *HistoryInfo) Clean() {
 
 // Job is for a DDL operation.
 type Job struct {
-	ID       int64         `json:"id"`
-	Type     ActionType    `json:"type"`
-	SchemaID int64         `json:"schema_id"`
-	TableID  int64         `json:"table_id"`
-	State    JobState      `json:"state"`
-	Error    *terror.Error `json:"err"`
+	ID         int64         `json:"id"`
+	Type       ActionType    `json:"type"`
+	SchemaID   int64         `json:"schema_id"`
+	SchemaName string        `json:"schema_name"`
+	TableID    int64         `json:"table_id"`
+	TableName  string        `json:"table_name"`
+	State      JobState      `json:"state"`
+	Error      *terror.Error `json:"err"`
 	// ErrorCount will be increased, every time we meet an error when running job.
 	ErrorCount int64 `json:"err_count"`
 	// RowCount means the number of rows that are processed.
@@ -207,10 +209,16 @@ func (job *Job) DecodeArgs(args ...interface{}) error {
 }
 
 // String implements fmt.Stringer interface.
+//func (job *Job) String() string {
+//	rowCount := job.GetRowCount()
+//	return fmt.Sprintf("ID:%d, Type:%s, State:%s, SchemaState:%s, SchemaID:%d, SchemaName:%s, TableID:%d, TableName:%s, RowCount:%d, ArgLen:%d, start time: %v",
+//		job.ID, job.Type, job.State, job.SchemaState, job.SchemaID, job.SchemaName, job.TableID, job.TableName, rowCount, len(job.Args), tsConvert2Time(job.StartTS))
+//}
+
 func (job *Job) String() string {
 	rowCount := job.GetRowCount()
-	return fmt.Sprintf("ID:%d, Type:%s, State:%s, SchemaState:%s, SchemaID:%d, TableID:%d, RowCount:%d, ArgLen:%d, start time: %v, Err:%v, ErrCount:%d, SnapshotVersion:%v",
-		job.ID, job.Type, job.State, job.SchemaState, job.SchemaID, job.TableID, rowCount, len(job.Args), tsConvert2Time(job.StartTS), job.Error, job.ErrorCount, job.SnapshotVer)
+	return fmt.Sprintf("ID:%d, Type:%s, State:%s, SchemaState:%s, SchemaID:%d, TableID:%d, RowCount:%d, ArgLen:%d, start time: %v",
+		job.ID, job.Type, job.State, job.SchemaState, job.SchemaID, job.TableID, rowCount, len(job.Args), tsConvert2Time(job.StartTS))
 }
 
 // IsFinished returns whether job is finished or not.

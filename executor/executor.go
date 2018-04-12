@@ -337,8 +337,10 @@ func (e *ShowDDLJobsExec) Next(ctx context.Context, chk *chunk.Chunk) error {
 	}
 	numCurBatch := mathutil.Min(e.maxChunkSize, len(e.jobs)-e.cursor)
 	for i := e.cursor; i < e.cursor+numCurBatch; i++ {
-		chk.AppendString(0, e.jobs[i].String())
-		chk.AppendString(1, e.jobs[i].State.String())
+		chk.AppendString(0, e.jobs[i].SchemaName)
+		chk.AppendString(1, e.jobs[i].TableName)
+		chk.AppendString(2, e.jobs[i].String())
+		chk.AppendString(3, e.jobs[i].State.String())
 	}
 	e.cursor += numCurBatch
 	return nil
