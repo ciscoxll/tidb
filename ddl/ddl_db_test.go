@@ -2348,25 +2348,26 @@ func (s *testDBSuite) TestBackwardCompatibility(c *C) {
 }
 
 func (s *testDBSuite) TestAlterTableAddPartition(c *C) {
-	s.tk.MustExec("use test")
-	s.tk.MustExec("drop table if employees")
-	s.tk.MustExec(`create table employees (
+	tk := testkit.NewTestKit(c, s.store)
+	tk.MustExec("use test")
+	tk.MustExec("drop table if exists employees")
+	tk.MustExec(`create table employees (
 	id int not null,
-	hired date not null
+	hired int not null
 	)
-	partition by range( year(hired) ) (
+	partition by range( hired ) (
 		partition p1 values less than (1991),
 		partition p2 values less than (1996),
 		partition p3 values less than (2001)
 	);`)
-	s.tk.MustExec(`alter table employees add partition (
+	tk.MustExec(`alter table employees add partition (
     partition p4 values less than (2010),
-    partition p5 values less than maxvalue
+    partition p5 values less than MAXVALUE
 	);`)
 
 	ctx := s.tk.Se.(sessionctx.Context)
 	is := domain.GetDomain(ctx).InfoSchema()
-	tbl, err := is.TableByName(model.NewCIStr("test"), model.NewCIStr("tp"))
+	tbl, err := is.TableByName(model.NewCIStr("test"), model.NewCIStr("employees"))
 	c.Assert(err, IsNil)
 	c.Assert(tbl.Meta().Partition, NotNil)
 	part := tbl.Meta().Partition
@@ -2382,22 +2383,22 @@ func (s *testDBSuite) TestAlterTableAddPartition(c *C) {
 	c.Assert(part.Definitions[2].Name, Equals, "p3")
 	c.Assert(part.Definitions[3].LessThan[0], Equals, "2010")
 	c.Assert(part.Definitions[3].Name, Equals, "p4")
-	c.Assert(part.Definitions[4].LessThan[0], Equals, "maxvalue")
+	c.Assert(part.Definitions[4].LessThan[0], Equals, "MAXVALUE")
 	c.Assert(part.Definitions[4].Name, Equals, "p5")
 
-	s.tk.MustExec("drop table if t1")
-	s.tk.MustExec("create table t1(a int)")
-	sql1 := `alter table t1 add partition (
+	tk.MustExec("drop table if exists table1;")
+	tk.MustExec("create table table1(a int);")
+	sql1 := `alter table table1 add partition (
 		partition p1 values less than (2010),
 		partition p2 values less than maxvalue
 	);`
-	s.testErrorCode(c, sql1, mysql.ErrPartitionMgmtOnNonpartitioned)
+	s.testErrorCode(c, sql1, tmysql.ErrPartitionMgmtOnNonpartitioned)
 
 	sql2 := "alter table t1 add partition"
-	s.testErrorCode(c, sql2, mysql.ErrPartitionsMustBeDefined)
+	s.testErrorCode(c, sql2, tmysql.ErrPartitionsMustBeDefined)
 
-	s.tk.MustExec("drop table if t2")
-	s.tk.MustExec(`create table t2 (
+	tk.MustExec("drop table if exists t2;")
+	tk.MustExec(`create table t2 (
 	id int not null,
 	hired date not null
 	)
@@ -2409,10 +2410,10 @@ func (s *testDBSuite) TestAlterTableAddPartition(c *C) {
 	sql3 := `alter table t2 add partition (
 		partition p3 values less than (2010)
 	);`
-	s.testErrorCode(c, sql3, mysql.ErrPartitionMaxvalue)
+	s.testErrorCode(c, sql3, tmysql.ErrPartitionMaxvalue)
 
-	s.tk.MustExec("drop table if t3")
-	s.tk.MustExec(`create table t3 (
+	tk.MustExec("drop table if exists t3")
+	tk.MustExec(`create table t3 (
 	id int not null,
 	hired date not null
 	)
@@ -2424,23 +2425,23 @@ func (s *testDBSuite) TestAlterTableAddPartition(c *C) {
 	sql4 := `alter table t3 add partition (
 		partition p3 values less than (1993)
 	);`
-	s.testErrorCode(c, sql4, mysql.ErrRangeNotIncreasing)
+	s.testErrorCode(c, sql4, tmysql.ErrRangeNotIncreasing)
 
 	sql5 := `alter table t3 add partition (
 		partition p1 values less than (1993)
 	);`
-	s.testErrorCode(c, sql5, mysql.ErrSameNamePartition)
+	s.testErrorCode(c, sql5, tmysql.ErrSameNamePartition)
 
 	sql6 := `alter table t3 add partition (
 		partition p1 values less than (1993),
 		partition p1 values less than (1995)
 	);`
-	s.testErrorCode(c, sql6, mysql.ErrSameNamePartition)
+	s.testErrorCode(c, sql6, tmysql.ErrSameNamePartition)
 
 	sql7 := `alter table t3 add partition (
 		partition p4 values less than (1993),
 		partition p1 values less than (1995)，
 		partition p5 values less than maxvalue,
 	);`
-	s.testErrorCode(c, sql7, mysql.ErrSameNamePartition)
+	s.testErrorCode(c, sql7, tmysql.ErrSameNamePartition)
 }
